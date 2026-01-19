@@ -11,13 +11,14 @@ const imgBeam = document.getElementById('img-beam');
 let gameRunning = false; // Start false for menu
 let gameResult = "";
 let isRoundTransition = false;
+let isPaused = false;
+let pausedTime = 0; // Track how long we've been paused
 
 // --- Round & Level System ---
 let currentLevel = 1;
 const maxLevels = 5;
 let unlockedLevels = parseInt(localStorage.getItem('unlockedLevels')) || 1;
 let currentRound = 1;
-const maxRounds = 5;
 let roundTimeLimit = 25; // Starting time in seconds (decreases each round)
 let roundTimer = 0; // Timer in frames (60fps)
 let lastTimestamp = 0;
@@ -37,6 +38,11 @@ document.addEventListener('keydown', (e) => {
     if (e.code === 'ArrowDown') keys.ArrowDown = true;
     if (e.code === 'ArrowLeft') keys.ArrowLeft = true;
     if (e.code === 'ArrowRight') keys.ArrowRight = true;
+
+    // Pause toggle with Escape
+    if (e.code === 'Escape' && gameRunning && !isRoundTransition) {
+        togglePause();
+    }
 
     // Restart (Only if game over and NOT in menu)
     const menuEl = document.getElementById('main-menu');
@@ -106,13 +112,14 @@ class Player extends Entity {
     constructor() {
         // Position hero on the left side of the stone floor, synced with background
         // Floor is at y=355 (stone platform top in background)
-        super(150, 291, 64, 64, 3.5, 3, imgHero); // 3 hearts for player
+        const hearts = getHeroHearts(); // Dynamic hearts based on level
+        super(150, 291, 64, 64, 3.5, hearts, imgHero);
         this.canShoot = true;
         this.shootCooldown = 0; // Add cooldown timer
         this.minY = 120; // Upper boundary for movement
         this.maxY = 291; // Floor position (355 - 64 height)
         this.shootingAnimation = 0; // Animation timer for shooting pose
-        this.beamsRemaining = 8; // Limited to 8 beams
+        this.beamsRemaining = getBeamsForLevel(); // Dynamic bullets based on level
     }
 
     update() {
@@ -308,6 +315,46 @@ function log(msg) {
     console.log(msg);
 }
 
+function getMaxRoundsForLevel() {
+    // Level 1: 3 rounds, Level 2: 3 rounds, Level 3: 4 rounds, Level 4-5: 5 rounds
+    if (currentLevel === 1 || currentLevel === 2) return 3;
+    if (currentLevel === 3) return 4;
+    return 5; // Levels 4 and 5
+}
+
+function getHeroHearts() {
+    // Level 1: 5, Level 2: 4, Level 3: 3, Level 4: 2, Level 5: 1
+    return Math.max(1, 6 - currentLevel);
+}
+
+function getBeamsForLevel() {
+    // Level 1: 10, Level 2: 9, Level 3-4: 8, Level 5: 7
+    if (currentLevel === 1) return 10;
+    if (currentLevel === 2) return 9;
+    if (currentLevel === 3 || currentLevel === 4) return 8;
+    return 7; // Level 5
+}
+
+function togglePause() {
+    if (!gameRunning || isRoundTransition) return;
+    
+    isPaused = !isPaused;
+    const pauseScreen = document.getElementById('pause-screen');
+    
+    if (isPaused) {
+        // Pausing - save current time
+        pausedTime = Date.now();
+        pauseScreen.classList.remove('hidden');
+        log("Game Paused");
+    } else {
+        // Resuming - adjust timer
+        const pauseDuration = Date.now() - pausedTime;
+        roundTimer += pauseDuration; // Extend timer by pause duration
+        pauseScreen.classList.add('hidden');
+        log("Game Resumed");
+    }
+}
+
 function resetGame() {
     currentRound = 1;
     startRound();
@@ -320,6 +367,7 @@ function showMainMenu() {
     document.getElementById('gameCanvas').style.display = 'none'; // Optional: hide canvas? kept for bg
     document.getElementById('ui-layer').style.display = 'none';
     document.getElementById('game-over-screen').classList.add('hidden');
+    document.querySelector('.controls-hint').style.display = 'none'; // Hide hint on menu
     
     const menu = document.getElementById('main-menu');
     menu.style.display = 'flex';
@@ -342,6 +390,7 @@ function startLevel(lvl) {
     document.getElementById('main-menu').style.display = 'none';
     document.getElementById('ui-layer').style.display = 'flex'; // Ensure UI is visible
     document.getElementById('gameCanvas').style.display = 'block'; // Ensure Canvas is visible
+    document.querySelector('.controls-hint').style.display = 'block'; // Show hint in game
     resetGame();
 }
 
@@ -350,6 +399,19 @@ document.getElementById('reset-progress-btn').addEventListener('click', () => {
     if(confirm("Reset all progress?")) {
         localStorage.removeItem('unlockedLevels');
         unlockedLevels = 1;
+        showMainMenu();
+    }
+});
+
+// Pause button listeners
+document.getElementById('resume-btn').addEventListener('click', () => {
+    togglePause();
+});
+
+document.getElementById('quit-btn').addEventListener('click', () => {
+    if(confirm("Quit to menu? (Progress in this level will be lost)")) {
+        isPaused = false;
+        document.getElementById('pause-screen').classList.add('hidden');
         showMainMenu();
     }
 });
@@ -473,7 +535,8 @@ function startRound() {
 
 function nextRound() {
     currentRound++;
-    if (currentRound > maxRounds) {
+    const maxRoundsForLevel = getMaxRoundsForLevel();
+    if (currentRound > maxRoundsForLevel) {
         completeLevel();
     } else {
         // Show round transition
@@ -491,9 +554,19 @@ function completeLevel() {
             unlockedLevels = currentLevel + 1;
             localStorage.setItem('unlockedLevels', unlockedLevels);
         }
-        endGame("LEVEL COMPLETE", "Press SPACE for Main Menu");
+        endGame("LEVEL COMPLETE", "Level " + (currentLevel + 1) + " Unlocked!");
+        
+        // Auto-return to menu after 3 seconds
+        setTimeout(() => {
+            showMainMenu();
+        }, 3000);
     } else {
         endGame("VICTORY", "ALL LEVELS COMPLETED!");
+        
+        // Auto-return to menu after 3 seconds
+        setTimeout(() => {
+            showMainMenu();
+        }, 3000);
     }
 }
 
@@ -583,7 +656,8 @@ function updateUI() {
     // Update round and timer display
     const roundEl = document.getElementById('round-display');
     const timerEl = document.getElementById('timer-display');
-    if (roundEl) roundEl.textContent = 'LVL ' + currentLevel + ' - ROUND ' + Math.min(currentRound, maxRounds) + '/' + maxRounds;
+    const maxRoundsForLevel = getMaxRoundsForLevel();
+    if (roundEl) roundEl.textContent = 'LVL ' + currentLevel + ' - ROUND ' + Math.min(currentRound, maxRoundsForLevel) + '/' + maxRoundsForLevel;
     if (timerEl) {
         // Calculate seconds remaining based on current time
         const secondsLeft = Math.ceil(Math.max(0, (roundTimer - Date.now()) / 1000));
@@ -641,7 +715,7 @@ function animate() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(imgBg, 0, 0, canvas.width, canvas.height);
 
-    if (gameRunning) {
+    if (gameRunning && !isPaused) {
         // Timer updated via Date.now() in UI/Logic checks
         
         player.update();
