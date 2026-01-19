@@ -8,11 +8,14 @@ const imgBg = document.getElementById('img-bg');
 const imgBeam = document.getElementById('img-beam');
 
 // --- Game State ---
-let gameRunning = true;
+let gameRunning = false; // Start false for menu
 let gameResult = "";
 let isRoundTransition = false;
 
-// --- Round System ---
+// --- Round & Level System ---
+let currentLevel = 1;
+const maxLevels = 5;
+let unlockedLevels = parseInt(localStorage.getItem('unlockedLevels')) || 1;
 let currentRound = 1;
 const maxRounds = 5;
 let roundTimeLimit = 25; // Starting time in seconds (decreases each round)
@@ -35,9 +38,19 @@ document.addEventListener('keydown', (e) => {
     if (e.code === 'ArrowLeft') keys.ArrowLeft = true;
     if (e.code === 'ArrowRight') keys.ArrowRight = true;
 
-    // Restart
+    // Restart (Only if game over and NOT in menu)
+    const menuEl = document.getElementById('main-menu');
     if (!gameRunning && !isRoundTransition && e.code === 'Space') {
-        resetGame();
+        // If menu is hidden (game over screen is active)
+        if (menuEl.style.display === 'none') {
+            if (gameResult === "VICTORY") {
+                 // Victory (Level or Game) -> Return to Menu
+                 showMainMenu();
+            } else {
+                // Game Over -> Restart Level
+                resetGame();
+            }
+        }
     }
 });
 
@@ -299,8 +312,47 @@ function resetGame() {
     currentRound = 1;
     startRound();
     document.getElementById('game-over-screen').classList.add('hidden');
-    log("Game Reset. Starting Round 1");
+    log("Game/Level Reset. Starting Level " + currentLevel + " Round 1");
 }
+
+function showMainMenu() {
+    gameRunning = false;
+    document.getElementById('gameCanvas').style.display = 'none'; // Optional: hide canvas? kept for bg
+    document.getElementById('ui-layer').style.display = 'none';
+    document.getElementById('game-over-screen').classList.add('hidden');
+    
+    const menu = document.getElementById('main-menu');
+    menu.style.display = 'flex';
+    
+    // Update buttons
+    document.querySelectorAll('.level-btn').forEach(btn => {
+        const lvl = parseInt(btn.dataset.level);
+        if (lvl <= unlockedLevels) {
+            btn.classList.remove('locked');
+            btn.onclick = () => startLevel(lvl);
+        } else {
+            btn.classList.add('locked');
+            btn.onclick = null;
+        }
+    });
+}
+
+function startLevel(lvl) {
+    currentLevel = lvl;
+    document.getElementById('main-menu').style.display = 'none';
+    document.getElementById('ui-layer').style.display = 'flex'; // Ensure UI is visible
+    document.getElementById('gameCanvas').style.display = 'block'; // Ensure Canvas is visible
+    resetGame();
+}
+
+// Reset Progress Listener
+document.getElementById('reset-progress-btn').addEventListener('click', () => {
+    if(confirm("Reset all progress?")) {
+        localStorage.removeItem('unlockedLevels');
+        unlockedLevels = 1;
+        showMainMenu();
+    }
+});
 
 // Image Processing Cache
 const processedImages = new Map();
@@ -408,25 +460,40 @@ function startRound() {
     }
     
     projectiles = [];
-    gameRunning = true;
-    gameResult = "";
-    
     // Timer: 25s for round 1, decreases by 3s each round
     roundTimeLimit = Math.max(10, 25 - (currentRound - 1) * 3);
     roundTimer = Date.now() + roundTimeLimit * 1000;
     
     updateUI();
     log("Starting Round " + currentRound + " - Timer: " + roundTimeLimit + "s");
+    
+    // SAFE START: Enable game running ONLY after everything is ready
+    gameRunning = true;
 }
 
 function nextRound() {
     currentRound++;
     if (currentRound > maxRounds) {
-        // Player wins the entire game!
-        endGame("VICTORY", "ALL ROUNDS COMPLETE!");
+        completeLevel();
     } else {
         // Show round transition
         showRoundTransition();
+    }
+}
+
+function completeLevel() {
+    gameRunning = false;
+    gameResult = "VICTORY";
+    
+    if (currentLevel < maxLevels) {
+        // Unlock next
+        if (currentLevel >= unlockedLevels) {
+            unlockedLevels = currentLevel + 1;
+            localStorage.setItem('unlockedLevels', unlockedLevels);
+        }
+        endGame("LEVEL COMPLETE", "Press SPACE for Main Menu");
+    } else {
+        endGame("VICTORY", "ALL LEVELS COMPLETED!");
     }
 }
 
@@ -457,8 +524,11 @@ function showRoundTransition() {
 }
 
 function getDifficultyMultiplier() {
-    // Round 1: 1.0, Round 2: 1.2, Round 3: 1.4, Round 4: 1.6, Round 5: 1.8
-    return 1 + (currentRound - 1) * 0.2;
+    // Round 1: 1.0, Round 2: 1.2
+    // Level scaling: Level 1 starts at 1.0, Level 2 starts at 1.5, etc.
+    const levelBase = 1 + (currentLevel - 1) * 0.5;
+    const roundAdd = (currentRound - 1) * 0.2;
+    return levelBase + roundAdd;
 }
 
 function checkCollisions() {
@@ -513,7 +583,7 @@ function updateUI() {
     // Update round and timer display
     const roundEl = document.getElementById('round-display');
     const timerEl = document.getElementById('timer-display');
-    if (roundEl) roundEl.textContent = 'ROUND ' + Math.min(currentRound, maxRounds) + '/' + maxRounds;
+    if (roundEl) roundEl.textContent = 'LVL ' + currentLevel + ' - ROUND ' + Math.min(currentRound, maxRounds) + '/' + maxRounds;
     if (timerEl) {
         // Calculate seconds remaining based on current time
         const secondsLeft = Math.ceil(Math.max(0, (roundTimer - Date.now()) / 1000));
@@ -590,6 +660,15 @@ function animate() {
 }
 
 window.onload = () => {
-    resetGame();
+    // Initially hide UI layer until game starts
+    // Need to add ID to ui-layer in HTML first? Or selecting by class works?
+    // Let's assume user added id="ui-layer" or we select by class. 
+    // Best to select by class and set ID or just use class.
+    // Wait, let's fix the selector in showMainMenu.
+    
+    const ui = document.querySelector('.ui-layer');
+    if(ui) ui.id = 'ui-layer'; // Ensure ID exists for easy toggling
+    
+    showMainMenu();
     animate();
 };
