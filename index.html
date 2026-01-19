@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pixel Dino Shooter</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="game-container">
+        <div class="ui-layer">
+            <div class="health-container player-health">
+                <div class="label">HERO</div>
+                <div class="hearts-display" id="player-hearts">❤️ ❤️ ❤️</div>
+                <div class="beams-display">BEAMS: <span id="beams-count">8</span></div>
+            </div>
+            <div class="round-timer-container">
+                <div id="round-display">ROUND 1/5</div>
+                <div id="timer-display">25s</div>
+            </div>
+            <div class="health-container boss-health">
+                <div class="label">DINO BOSS <span id="dino-hits">5/5</span></div>
+                <div class="bar-bg">
+                    <div class="bar-fill" id="boss-hp-bar"></div>
+                </div>
+            </div>
+        </div>
+
+        <canvas id="gameCanvas" width="800" height="450"></canvas>
+
+        <div id="game-over-screen" class="hidden">
+            <h1 id="game-result-title">GAME OVER</h1>
+            <h2 id="game-result-subtitle"></h2>
+            <p id="restart-msg">Press SPACE to Restart</p>
+        </div>
+
+        <div class="controls-hint">
+            UP/DOWN ARROWS to Move • SPACE to Shoot
+        </div>
+    </div>
+
+    <!-- Preload Assets -->
+    <div style="display:none;">
+        <img id="img-hero" src="hero_v4.png" alt="Hero">
+        <img id="img-dino" src="dino_v4.png" alt="Dino">
+        <img id="img-bg" src="bg.png" alt="Background">
+        <img id="img-beam" src="beam.png" alt="Beam">
+    </div>
+
+    <script src="game.js"></script>
+</body>
+
+</html>
