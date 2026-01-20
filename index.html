@@ -58,6 +58,39 @@
             <button id="quit-btn" class="level-btn">QUIT TO MENU</button>
         </div>
 
+        <div id="instructions-screen" class="hidden">
+            <h1>INSTRUCTIONS (PC)</h1>
+            <div class="instruction-container">
+                <div class="instr-line">
+                    <span class="key-highlight">⬆️ ⬇️</span>
+                    <span class="instr-text">Use <strong>UP/DOWN ARROWS</strong> to Move</span>
+                </div>
+                <div class="instr-line">
+                    <span class="key-highlight">SPACE</span>
+                    <span class="instr-text">Use <strong>SPACE BAR</strong> to Shoot</span>
+                </div>
+            </div>
+            <div class="timer-actions">
+                <p id="instruction-countdown">Game starts in 6...</p>
+                <button id="skip-instr-btn">SKIP >></button>
+            </div>
+        </div>
+
+        <!-- Touch Controls (Mobile Only via CSS) -->
+        <button id="btn-pause-touch" class="touch-btn pause-corner-btn">⏸️</button>
+        <div class="touch-controls">
+            <div class="d-pad">
+                <button id="btn-up" class="touch-btn">▲</button>
+                <div class="d-pad-row">
+                    <!-- Placeholder for left/right if needed later, currently just spacer -->
+                </div>
+                <button id="btn-down" class="touch-btn">▼</button>
+            </div>
+            <div class="action-btn">
+                <button id="btn-shoot" class="touch-btn big-btn">🔥</button>
+            </div>
+        </div>
+
         <div class="controls-hint">
             UP/DOWN ARROWS to Move • SPACE to Shoot
         </div>

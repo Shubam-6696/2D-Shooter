@@ -109,11 +109,14 @@ class Entity {
 }
 
 class Player extends Entity {
-    constructor() {
+    constructor(initialY = null) {
         // Position hero on the left side of the stone floor, synced with background
         // Floor is at y=355 (stone platform top in background)
         const hearts = getHeroHearts(); // Dynamic hearts based on level
-        super(150, 291, 64, 64, 3.5, hearts, imgHero);
+        const minY = 120;
+        const maxY = 291;
+        const randomY = initialY !== null ? initialY : minY + Math.random() * (maxY - minY);
+        super(150, randomY, 64, 64, 3.5, hearts, imgHero);
         this.canShoot = true;
         this.shootCooldown = 0; // Add cooldown timer
         this.minY = 120; // Upper boundary for movement
@@ -192,9 +195,17 @@ class Player extends Entity {
 }
 
 class Enemy extends Entity {
-    constructor() {
+    constructor(initialX = null, initialY = null) {
         // Position dino on the right side, with random movement
-        super(650, 200, 80, 80, 2.5, 5, imgDino);
+        // HP varies by level: L1-L2: 7, L3: 6, L4-L5: 5
+        const dinoHp = getDinoHearts();
+        const minX = 450;
+        const maxX = 700;
+        const minY = 120;
+        const maxY = 275;
+        const randomX = initialX !== null ? initialX : minX + Math.random() * (maxX - minX);
+        const randomY = initialY !== null ? initialY : minY + Math.random() * (maxY - minY);
+        super(randomX, randomY, 80, 80, 2.5, dinoHp, imgDino);
         this.shootTimer = 0;
         this.vx = 0; // Horizontal velocity
         this.vy = 1.5; // Vertical velocity
@@ -210,18 +221,19 @@ class Enemy extends Entity {
         // Random direction change timer
         this.directionChangeTimer++;
         if (this.directionChangeTimer >= this.nextDirectionChange) {
-            // Randomize velocities (slower movement)
-            this.vx = (Math.random() - 0.5) * 2; // -1 to +1
-            this.vy = (Math.random() - 0.5) * 2.5; // -1.25 to +1.25
+            // Randomize velocities for both axes (balanced speed)
+            this.vx = (Math.random() - 0.5) * 4.8; // -2.4 to +2.4 (2.4x original)
+            this.vy = (Math.random() - 0.5) * 6.25; // -3.125 to +3.125 (2.5x original)
+            
             this.directionChangeTimer = 0;
-            this.nextDirectionChange = 60 + Math.random() * 120;
+            this.nextDirectionChange = 60 + Math.random() * 120; // Random 1-3 seconds
         }
         
-        // Apply movement
+        // Apply movement in both axes
         this.x += this.vx;
         this.y += this.vy;
         
-        // Boundary checks with bounce
+        // Boundary checks with bounce for Y-axis
         if (this.y <= this.minY) {
             this.y = this.minY;
             this.vy = Math.abs(this.vy); // Bounce down
@@ -230,6 +242,7 @@ class Enemy extends Entity {
             this.vy = -Math.abs(this.vy); // Bounce up
         }
         
+        // Boundary checks with bounce for X-axis
         if (this.x <= this.minX) {
             this.x = this.minX;
             this.vx = Math.abs(this.vx); // Bounce right
@@ -323,16 +336,23 @@ function getMaxRoundsForLevel() {
 }
 
 function getHeroHearts() {
-    // Level 1: 5, Level 2: 4, Level 3: 3, Level 4: 2, Level 5: 1
+    // Level 1: 5, Level 2: 4, Level 3: 3, Level 4: 2, Level 5: 2
+    if (currentLevel === 5) return 2;
     return Math.max(1, 6 - currentLevel);
 }
 
+function getDinoHearts() {
+    // Level 1-2: 7, Level 3: 6, Level 4-5: 5
+    if (currentLevel === 1 || currentLevel === 2) return 7;
+    if (currentLevel === 3) return 6;
+    return 5; // Level 4 and 5
+}
+
 function getBeamsForLevel() {
-    // Level 1: 10, Level 2: 9, Level 3-4: 8, Level 5: 7
-    if (currentLevel === 1) return 10;
-    if (currentLevel === 2) return 9;
-    if (currentLevel === 3 || currentLevel === 4) return 8;
-    return 7; // Level 5
+    // Level 1-2: 12, Level 3: 8, Level 4-5: 5
+    if (currentLevel === 1 || currentLevel === 2) return 12;
+    if (currentLevel === 3) return 8;
+    return 5; // Level 4 and 5
 }
 
 function togglePause() {
@@ -369,6 +389,12 @@ function showMainMenu() {
     document.getElementById('game-over-screen').classList.add('hidden');
     document.querySelector('.controls-hint').style.display = 'none'; // Hide hint on menu
     
+    // Hide touch controls on menu
+    const touchControls = document.querySelector('.touch-controls');
+    const pauseBtn = document.querySelector('.pause-corner-btn');
+    if (touchControls) touchControls.style.display = 'none';
+    if (pauseBtn) pauseBtn.style.display = 'none';
+    
     const menu = document.getElementById('main-menu');
     menu.style.display = 'flex';
     
@@ -387,11 +413,74 @@ function showMainMenu() {
 
 function startLevel(lvl) {
     currentLevel = lvl;
+    currentRound = 1;
+    
+    // Hide Menu
     document.getElementById('main-menu').style.display = 'none';
-    document.getElementById('ui-layer').style.display = 'flex'; // Ensure UI is visible
-    document.getElementById('gameCanvas').style.display = 'block'; // Ensure Canvas is visible
-    document.querySelector('.controls-hint').style.display = 'block'; // Show hint in game
-    resetGame();
+    
+    // UI Elements
+    const instrScreen = document.getElementById('instructions-screen');
+    const cntDown = document.getElementById('instruction-countdown');
+    const uiLayer = document.getElementById('ui-layer');
+    const canvas = document.getElementById('gameCanvas');
+    const hint = document.querySelector('.controls-hint'); // Bottom hint
+    
+    // Hide Game UI initially
+    uiLayer.style.display = 'none';
+    canvas.style.display = 'none';
+    if(hint) hint.style.display = 'none';
+    
+    // Show Instructions Screen
+    if (instrScreen) {
+        instrScreen.classList.remove('hidden');
+        instrScreen.style.display = 'flex';
+        
+        let count = 6;
+        if(cntDown) cntDown.textContent = "Game starts in " + count + "...";
+        
+        const interval = setInterval(() => {
+            count--;
+            if (count > 0) {
+                if(cntDown) cntDown.textContent = "Game starts in " + count + "...";
+            } else {
+                clearInterval(interval);
+                startGameplay();
+            }
+        }, 1000);
+
+        // Skip Button Logic
+        const skipBtn = document.getElementById('skip-instr-btn');
+        if (skipBtn) {
+            skipBtn.onclick = () => {
+                clearInterval(interval); // Stop the timer
+                startGameplay(); // Start immediately
+            };
+        }
+    } else {
+        // Fallback if screen missing
+        startGameplay();
+    }
+    
+    function startGameplay() {
+        // Hide Instructions
+        if (instrScreen) {
+            instrScreen.classList.add('hidden');
+            instrScreen.style.display = 'none';
+        }
+        
+        // Show Game Elements
+        uiLayer.style.display = 'flex';
+        canvas.style.display = 'block';
+        if(hint) hint.style.display = 'block';
+        
+        // Show touch controls in game
+        const touchControls = document.querySelector('.touch-controls');
+        const pauseBtn = document.querySelector('.pause-corner-btn');
+        if (touchControls) touchControls.style.display = ''; 
+        if (pauseBtn) pauseBtn.style.display = '';
+        
+        resetGame();
+    }
 }
 
 // Reset Progress Listener
@@ -522,8 +611,16 @@ function startRound() {
     }
     
     projectiles = [];
-    // Timer: 25s for round 1, decreases by 3s each round
-    roundTimeLimit = Math.max(10, 25 - (currentRound - 1) * 3);
+    // Timer based on level: L1-L3: 18s, L4: 25s, L5: 30s (decreases by 3s each round)
+    let baseTime;
+    if (currentLevel <= 3) {
+        baseTime = 18;
+    } else if (currentLevel === 4) {
+        baseTime = 25;
+    } else {
+        baseTime = 30; // Level 5
+    }
+    roundTimeLimit = Math.max(10, baseTime - (currentRound - 1) * 3);
     roundTimer = Date.now() + roundTimeLimit * 1000;
     
     updateUI();
@@ -745,4 +842,57 @@ window.onload = () => {
     
     showMainMenu();
     animate();
+    
+    // Touch Controls Logic
+    const btnUp = document.getElementById('btn-up');
+    const btnDown = document.getElementById('btn-down');
+    const btnShoot = document.getElementById('btn-shoot');
+    
+    const handleTouch = (btn, key, isPressed) => {
+        if (!btn) return;
+        
+        const updateKey = (pressed) => {
+            if (key === 'ArrowUp') keys.ArrowUp = pressed;
+            if (key === 'ArrowDown') keys.ArrowDown = pressed;
+            if (key === 'Space') {
+                if (pressed) {
+                    keys.Space = true;
+                } else {
+                    keys.Space = false;
+                    player.canShoot = true; // heavy trigger reset
+                }
+            }
+            
+            // Visual feedback
+            if (pressed) btn.classList.add('active');
+            else btn.classList.remove('active');
+        };
+
+        // Add both mouse and touch events
+        btn.addEventListener('mousedown', (e) => { e.preventDefault(); updateKey(true); });
+        btn.addEventListener('mouseup', (e) => { e.preventDefault(); updateKey(false); });
+        btn.addEventListener('mouseleave', (e) => { updateKey(false); });
+        
+        btn.addEventListener('touchstart', (e) => { e.preventDefault(); updateKey(true); }, {passive: false});
+        btn.addEventListener('touchend', (e) => { e.preventDefault(); updateKey(false); }, {passive: false});
+    };
+
+    handleTouch(btnUp, 'ArrowUp');
+    handleTouch(btnDown, 'ArrowDown');
+    handleTouch(btnShoot, 'Space');
+    
+    // Pause button touch logic
+    const btnPauseTouch = document.getElementById('btn-pause-touch');
+    if (btnPauseTouch) {
+        // Use click/touchend to toggle
+        const toggleHandler = (e) => {
+            e.preventDefault();
+            togglePause();
+            // Visual feedback
+            btnPauseTouch.classList.add('active');
+            setTimeout(() => btnPauseTouch.classList.remove('active'), 100);
+        };
+        btnPauseTouch.addEventListener('touchstart', toggleHandler, {passive: false});
+        btnPauseTouch.addEventListener('mousedown', toggleHandler);
+    }
 };

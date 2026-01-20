@@ -17,6 +17,8 @@ body {
 
 .game-container {
     position: relative;
+    width: 800px; /* Explicit width matching canvas */
+    height: 450px; /* Explicit height matching canvas */
     border: 4px solid #4a4a6a;
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
     background-color: #000;
@@ -24,6 +26,8 @@ body {
 
 canvas {
     display: block;
+    width: 100%;
+    height: 100%;
     image-rendering: pixelated;
     /* Essential for crisp pixel art */
 }
@@ -263,4 +267,210 @@ p {
 
 #pause-screen button {
     margin: 5px;
+}
+
+/* Touch Controls */
+.touch-controls {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    right: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    pointer-events: none; /* Let clicks pass through empty spaces */
+    z-index: 100;
+    /* Initially hidden on desktop if preferred, but let's show for accessibility/testing */
+    /* display: none; */ 
+}
+
+/* Show on mobile or small screens */
+@media (hover: none) and (pointer: coarse), (max-width: 768px) {
+    .touch-controls, .pause-corner-btn {
+        display: flex;
+    }
+    .controls-hint {
+        display: none !important; /* Hide keyboard hints on mobile */
+    }
+}
+
+.pause-corner-btn {
+    position: absolute;
+    top: 80px; /* Below dino health bar */
+    right: 20px;
+    z-index: 100;
+    width: 30px;
+    height: 30px;
+    font-size: 14px;
+    display: none; /* Initially hidden */
+    padding: 0; /* consistent centering */
+}
+
+/* Instructions Screen */
+#instructions-screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(20, 20, 30, 0.98); /* Slightly lighter dark bg */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 25;
+}
+
+.instruction-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Center the lines */
+    justify-content: center;
+    gap: 30px;
+    margin: 30px 0;
+}
+
+.instr-line {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    font-size: 16px; /* Pixel font size */
+    color: #bdc3c7;
+    letter-spacing: 1px;
+}
+
+.key-highlight {
+    font-size: 20px;
+    color: #f1c40f;
+    text-shadow: 2px 2px 0 #c0392b;
+    background: rgba(0,0,0,0.3);
+    padding: 10px 20px;
+    border-radius: 4px;
+    border: 2px solid #555;
+    min-width: 160px; /* Wider for SPACE BAR */
+    text-align: center;
+    white-space: nowrap;
+}
+
+.instr-text strong {
+    color: #fff;
+    font-weight: normal; /* Font already boldish */
+}
+
+.timer-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px; /* Nice small gap between timer and button */
+    margin-top: 40px;
+}
+
+#instruction-countdown {
+    font-size: 20px;
+    color: #3498db;
+    margin: 0; /* Handled by container */
+    text-shadow: 2px 2px 0 #000;
+    letter-spacing: 2px;
+}
+
+#skip-instr-btn {
+    background: transparent;
+    border: 2px solid #555;
+    color: #777;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 10px; /* Slightly smaller */
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    margin: 0;
+}
+
+#skip-instr-btn:hover {
+    border-color: #fff;
+    color: #fff;
+    background: rgba(255,255,255,0.1);
+}
+
+.touch-btn {
+    pointer-events: auto; /* Re-enable clicks on buttons */
+    width: 60px;
+    height: 60px;
+    background-color: rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    border-radius: 50%;
+    color: white;
+    font-size: 24px;
+    font-family: inherit;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    touch-action: manipulation; /* Prevent zoom */
+    -webkit-tap-highlight-color: transparent;
+    transition: background-color 0.1s, transform 0.1s;
+}
+
+.touch-btn:active, .touch-btn.active {
+    background-color: rgba(255, 255, 255, 0.5);
+    transform: scale(0.95);
+}
+
+.d-pad {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.action-btn {
+    margin-bottom: 20px;
+    margin-right: 20px;
+}
+
+.big-btn {
+    width: 80px;
+    height: 80px;
+    background-color: rgba(231, 76, 60, 0.3);
+    border-color: rgba(231, 76, 60, 0.6);
+    font-size: 32px;
+}
+
+.big-btn:active, .big-btn.active {
+    background-color: rgba(231, 76, 60, 0.6);
+}
+
+/* Adjust layout for mobile */
+@media (max-width: 600px) {
+    .game-container {
+        width: 100%;
+        height: 100vh;
+        border: none;
+    }
+    canvas {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+    }
+    .ui-layer {
+        top: 10px;
+        left: 10px;
+        right: 10px;
+    }
+    .health-container {
+        width: 140px;
+        transform: scale(0.8);
+        transform-origin: top left;
+    }
+    .boss-health {
+        transform-origin: top right;
+    }
+    h1 {
+        font-size: 24px;
+    }
+    .level-select-container {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
 }
